@@ -102,6 +102,48 @@ JsonValue& JsonValue::operator=(const JsonValue& other)
     return *this;
 }
 
+JsonValue& JsonValue::operator[](const std::string& key)
+{
+    if (type != JsonValueType::Object) {
+        throw std::runtime_error("Not an object");
+    }
+    return (*data.object_value)[key];
+}
+
+JsonValue& JsonValue::operator[](const std::string& key) const
+{
+    if (type != JsonValueType::Object) {
+        throw std::runtime_error("Not an object");
+    }
+    auto it = data.object_value->find(key);
+    if (it == data.object_value->end()) {
+        throw std::out_of_range("Key not found: " + key);
+    }
+    return it->second;
+}
+
+JsonValue& JsonValue::operator[](size_t index)
+{
+    if (type != JsonValueType::Array) {
+        throw std::runtime_error("Not an array");
+    }
+    if (index >= data.array_value->size()) {
+        throw std::out_of_range("Array index out of range");
+    }
+    return (*data.array_value)[index];
+}
+
+JsonValue& JsonValue::operator[](size_t index) const
+{
+    if (type != JsonValueType::Array) {
+        throw std::runtime_error("Not an array");
+    }
+    if (index >= data.array_value->size()) {
+        throw std::out_of_range("Array index out of range");
+    }
+    return (*data.array_value)[index];
+}
+
 void JsonValue::print(int indent) const 
 {
     std::string pad(indent * 2, ' ');

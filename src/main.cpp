@@ -1,4 +1,5 @@
 #include <iostream>
+#include <string>
 #include "json_value.h"
 #include "tokenizer.h"
 #include "parser.h"
@@ -22,7 +23,18 @@ int main()
         std::cout << "Dumped JSON string: " << std::endl;
         std::string dumped_json = json_value.dump(2);
         std::cout << dumped_json << std::endl;
-        
+
+        std::string name = json_value["name"].as_string();
+        std::string city = json_value["address"]["city"].as_string();
+        int age = json_value["age"].as_int();
+        double first_score = json_value["scores"][0].as_double();
+        bool is_student = json_value["isStudent"].as_boolean();
+        std::cout << "Name: " << name << std::endl;
+        std::cout << "Age: " << age << std::endl;
+        std::cout << "First Score: " << first_score << std::endl;
+        std::cout << "Is Student: " << (is_student ? "true" : "false") << std::endl;
+        std::cout << "City: " << city << std::endl;
+
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;
     }
