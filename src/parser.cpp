@@ -3,14 +3,28 @@
 Parser::Parser(const std::vector<Tokenizer::Token>& tokens) : tokens(tokens), position(0) {}
 
 JsonValue Parser::parse() {
+    if (tokens.empty()) {
+        throw JsonException("Input is empty", 1, 1);
+    }
     return parseValue();
+
+    if (position < tokens.size()) {
+        Tokenizer::Token extra = peek();
+        throw JsonException("Unexpected token after end of JSON value: " + extra.value, extra.line, extra.column);
+    }
 }
 
 Tokenizer::Token Parser::peek() const {
+    if (position >= tokens.size()) {
+        throw JsonException("Unexpected end of input", tokens.back().line, tokens.back().column);
+    }
     return tokens[position];
 }
 
 Tokenizer::Token Parser::get() {
+    if (position >= tokens.size()) {
+        throw JsonException("Unexpected end of input", tokens.back().line, tokens.back().column);
+    }
     return tokens[position++];
 }
 
@@ -32,7 +46,7 @@ JsonValue Parser::parseValue() {
         case Tokenizer::TokenType::Null:
             return parseNull();
         default:
-            throw std::runtime_error("Unexpected token: " + token.value);
+            throw JsonException("Unexpected token: " + token.value, token.line, token.column);
     }
 }
 
@@ -41,11 +55,11 @@ JsonValue Parser::parseObject() {
     get(); // Skip '{'
     while (peek().type != Tokenizer::TokenType::RightBrace) {
         if (peek().type != Tokenizer::TokenType::String) {
-            throw std::runtime_error("Expected string key in object");
+            throw JsonException("Expected string key in object", peek().line, peek().column);
         }
         std::string key = get().value;
         if (get().type != Tokenizer::TokenType::Colon) {
-            throw std::runtime_error("Expected ':' after key in object");
+            throw JsonException("Expected ':' after key in object", peek().line, peek().column);
         }
         JsonValue value = parseValue();
         object[key] = value;
@@ -53,7 +67,7 @@ JsonValue Parser::parseObject() {
         if (peek().type == Tokenizer::TokenType::Comma) {
             get(); // Skip ','
         } else if (peek().type != Tokenizer::TokenType::RightBrace) {
-            throw std::runtime_error("Expected ',' or '}' in object");
+            throw JsonException("Expected ',' or '}' in object", peek().line, peek().column);
         }
     }
     get(); // Skip '}'
@@ -65,10 +79,11 @@ JsonValue Parser::parseArray() {
     get(); // Skip '['
     while (peek().type != Tokenizer::TokenType::RightBracket) {
         array.push_back(parseValue());
-        if (peek().type == Tokenizer::TokenType::Comma) {
+        const auto& next = peek();
+        if (next.type == Tokenizer::TokenType::Comma) {
             get(); // Skip ','
-        } else if (peek().type != Tokenizer::TokenType::RightBracket) {
-            throw std::runtime_error("Expected ',' or ']' in array");
+        } else if (next.type != Tokenizer::TokenType::RightBracket) {
+            throw JsonException("Expected ',' or ']' in array", next.line, next.column);
         }
     }
     get(); // Skip ']'

@@ -2,6 +2,8 @@
 
 #include "tokenizer.h"
 #include "json_value.h"
+#include "json_exception.h"
+#include <vector>
 
 class Parser {
 public:
@@ -14,6 +16,7 @@ private:
 
     Tokenizer::Token peek() const;
     Tokenizer::Token get();
+
     JsonValue parseValue();
     JsonValue parseObject();
     JsonValue parseArray();

@@ -8,6 +8,8 @@ std::vector<Tokenizer::Token> Tokenizer::tokenize() {
         skipWhitespace();
         if (position >= input.size()) break;
 
+        startToken();
+
         char current = peek();
         switch (current) {
             case '{':
@@ -50,7 +52,11 @@ std::vector<Tokenizer::Token> Tokenizer::tokenize() {
                     tokens.emplace_back(TokenType::Null);
                     position += 4;
                 } else {
-                    throw std::runtime_error("Unexpected character: " + std::string(1, current));
+                    throw std::runtime_error(
+                        "Error at line " + std::to_string(cur_line) + 
+                        ", column " + std::to_string(cur_column) +
+                        ": Unexpected character '" + std::string(1, current) + "'"
+                    );
                 }
         }
     }
@@ -62,7 +68,15 @@ char Tokenizer::peek() const {
 }
 
 char Tokenizer::get() {
-    return input[position++];
+    if (position >= input.size()) return '\0';
+    char current = input[position++];
+    if (current == '\n') {
+        cur_line++;
+        cur_column = 1;
+    } else {
+        cur_column++;
+    }
+    return current;
 }
 
 void Tokenizer::skipWhitespace() {
@@ -80,7 +94,11 @@ Tokenizer::Token Tokenizer::parseString() {
             break; // End of string
         } else if (current == '\\') {
             if (position >= input.size()) {
-                throw std::runtime_error("Unexpected end of input in string escape sequence");
+                throw std::runtime_error(
+                    "Error at line " + std::to_string(cur_line) + 
+                    ", column " + std::to_string(cur_column) +
+                    ": Unexpected end of input in string literal"
+                );
             }
             char escape = get();
             switch (escape) {
@@ -93,7 +111,11 @@ Tokenizer::Token Tokenizer::parseString() {
                 case 'r': result += '\r'; break;
                 case 't': result += '\t'; break;
                 default:
-                    throw std::runtime_error("Invalid escape character: " + std::string(1, escape));
+                    throw std::runtime_error(
+                        "Error at line " + std::to_string(cur_line) + 
+                        ", column " + std::to_string(cur_column) +
+                        ": Invalid escape sequence '\\" + std::string(1, escape) + "'"
+                    );
             }
         } else {
             result += current;
@@ -107,14 +129,49 @@ Tokenizer::Token Tokenizer::parseNumber() {
     if (peek() == '-') {
         get();
     }
+    if (position >= input.size() || !isdigit(peek())) {
+        throw std::runtime_error(
+            "Error at line " + std::to_string(cur_line) + 
+            ", column " + std::to_string(cur_column) +
+            ": Invalid number format"
+        );
+    }
     while (position < input.size() && isdigit(peek())) {
         get();
     }
     if (position < input.size() && peek() == '.') {
         get();
+        if (position >= input.size() || !isdigit(peek())) {
+            throw std::runtime_error(
+                "Error at line " + std::to_string(cur_line) + 
+                ", column " + std::to_string(cur_column) +
+                ": Invalid number - missing digits after decimal point"
+            );
+        }
+        while (position < input.size() && isdigit(peek())) {
+            get();
+        }
+    }
+    if (position < input.size() && (peek() == 'e' || peek() == 'E')) {
+        get();
+        if (position < input.size() && (peek() == '+' || peek() == '-')) {
+            get();
+        }
+        if (position >= input.size() || !isdigit(peek())) {
+            throw std::runtime_error(
+                "Error at line " + std::to_string(cur_line) + 
+                ", column " + std::to_string(cur_column) +
+                ": Invalid number - missing digits in exponent"
+            );
+        }
         while (position < input.size() && isdigit(peek())) {
             get();
         }
     }
     return Token(TokenType::Number, input.substr(start, position - start));
+}
+
+void Tokenizer::startToken() {
+    token_start_line = cur_line;
+    token_start_column = cur_column;
 }
