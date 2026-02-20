@@ -18,6 +18,10 @@ int main()
         std::cout << "JSON Value: " << std::endl;
         json_value.print();
         std::cout << std::endl;
+
+        std::cout << "Dumped JSON string: " << std::endl;
+        std::string dumped_json = json_value.dump(2);
+        std::cout << dumped_json << std::endl;
         
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;

@@ -1,5 +1,6 @@
 #include "json_value.h"
 #include <iostream>
+#include <sstream>
 
 JsonValue::JsonValue() : type(JsonValueType::Null) {}
 
@@ -75,7 +76,6 @@ JsonValue& JsonValue::operator=(const JsonValue& other)
     if (this == &other)
         return *this;
 
-    // Clean up existing data
     this->~JsonValue();
 
     type = other.type;
@@ -104,7 +104,7 @@ JsonValue& JsonValue::operator=(const JsonValue& other)
 
 void JsonValue::print(int indent) const 
 {
-    std::string pad(indent * 2, ' ');  // 缩进
+    std::string pad(indent * 2, ' ');
     switch (type) {
         case JsonValueType::Null:
             std::cout << "null";
@@ -145,4 +145,90 @@ void JsonValue::print(int indent) const
             std::cout << pad << "}";
             break;
     }
+}
+
+static std::string escape_string(const std::string& s) {
+    std::string result;
+    for (char c : s) {
+        switch (c) {
+            case '"': result += "\\\""; break;
+            case '\\': result += "\\\\"; break;
+            case '/': result += "\\/"; break;
+            case '\b': result += "\\b"; break;
+            case '\f': result += "\\f"; break;
+            case '\n': result += "\\n"; break;
+            case '\r': result += "\\r"; break;
+            case '\t': result += "\\t"; break;
+            default:
+                if (static_cast<unsigned char>(c) < 0x20) {
+                    char buf[7];
+                    snprintf(buf, sizeof(buf), "\\u%04x", c);
+                    result += buf;
+                } else {
+                    result += c;
+                }
+        }
+    }
+    return result;
+}
+
+std::string JsonValue::dump(int indent) const {
+    return dump_impl(indent, 0);  // Second parameter is current depth, initially 0
+}
+
+std::string JsonValue::dump_impl(int indent, int depth) const {
+    std::string pad(depth * indent, ' ');
+    switch (type) {
+        case JsonValueType::Null:
+            return "null";
+        case JsonValueType::Boolean:
+            return data.boolean_value ? "true" : "false";
+        case JsonValueType::Number:
+            // return std::to_string(data.number_value);
+            // to_string may add trailing zeros, better use snprintf
+            {
+                char buf[32];
+                snprintf(buf, sizeof(buf), "%g", data.number_value);
+                return std::string(buf);
+            }
+        case JsonValueType::String:
+            return "\"" + escape_string(*data.string_value) + "\"";
+        case JsonValueType::Array: {
+            if (data.array_value->empty()) return "[]";
+            
+            std::string newline = (indent >= 0) ? "\n" : "";
+            std::string child_pad = (indent >= 0) ? std::string(indent, ' ') : "";
+            
+            std::string result = "[" + newline;
+            for (size_t i = 0; i < data.array_value->size(); ++i) {
+                if (indent >= 0) result += pad + child_pad;
+                result += (*data.array_value)[i].dump_impl(indent, depth + 1);
+                if (i < data.array_value->size() - 1) result += "," + newline;
+                else result += newline;
+            }
+            if (indent >= 0) result += pad;
+            result += "]";
+            return result;
+        }
+        case JsonValueType::Object: {
+            if (data.object_value->empty()) return "{}";
+            
+            std::string newline = (indent >= 0) ? "\n" : "";
+            std::string child_pad = (indent >= 0) ? std::string(indent, ' ') : "";
+            
+            std::string result = "{" + newline;
+            size_t count = 0;
+            for (const auto& pair : *data.object_value) {
+                if (indent >= 0) result += pad + child_pad;
+                result += "\"" + escape_string(pair.first) + "\": " + pair.second.dump_impl(indent, depth + 1);
+                if (count < data.object_value->size() - 1) result += "," + newline;
+                else result += newline;
+                ++count;
+            }
+            if (indent >= 0) result += pad;
+            result += "}";
+            return result;
+        }
+    }
+    return "null";
 }

@@ -33,9 +33,13 @@ public:
     JsonValue(const std::string& value);
     JsonValue(const std::vector<JsonValue>& value);
     JsonValue(const std::map<std::string, JsonValue>& value);
-    JsonValue(const JsonValue& other); // 拷贝构造
-    JsonValue& operator=(const JsonValue& other); // 拷贝赋值
+    JsonValue(const JsonValue& other); // copy construct
+    JsonValue& operator=(const JsonValue& other); // copy assign
     ~JsonValue();
 
     void print(int indent = 0) const;
+    std::string dump(int indent = 0) const; // -1 compact mode, 0 line break no indent mode, >=1 indent mode
+    
+private:
+    std::string dump_impl(int indent, int depth) const;
 };
